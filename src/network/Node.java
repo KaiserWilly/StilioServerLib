@@ -11,15 +11,20 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 /**
- * Created by JD Isenhart on 10/24/2016.
- * Testing RMI creation in Java 8
+ * Created 10/24/2016
+ * Software Development - Team 2063-1
+ * Colorado TSA Conference - Feb 2017
+ *
+ * Purpose: Node is the basic building block of
+ * the framework. It represents one available machine
+ * on which server code can execute on. They are
+ * assigned roles (Shards)
  */
-public class Node implements InifNode, InifServer, Serializable {
-    private Array arrayData;
-    private Shard shard;
-    private String queryIP, nodeIP;
-    private int nodePort = 1180, qport = 1180;
-    //    private boolean coreCheck = true;
+public class Node implements InifNode, InifNodeServer, Serializable {
+    private Array arrayData; //Parent Array
+    private Shard shard; //Role
+    private String queryIP, nodeIP; //OSI Level 3 Addresses
+    private int nodePort = 1180, qport = 1180; //Port Addresses
     transient private Timer timer = new Timer();
 
     public Node() {
@@ -44,10 +49,10 @@ public class Node implements InifNode, InifServer, Serializable {
         this.shard = shard;
     }
 
-    private void createRegistry() {
+    private void createRegistry() { //Create local RMI Registry
         try {
             LocateRegistry.createRegistry(nodePort);
-        } catch (RemoteException e) {
+        } catch (RemoteException e) { //Recursively call method until open port is found
             if (nodePort > 1200) {
                 System.err.println("Unable to bind to a port!");
                 System.exit(0);
@@ -57,13 +62,13 @@ public class Node implements InifNode, InifServer, Serializable {
         }
     }
 
-    private void startAdminServer() {
+    private void startAdminServer() { //Start Administrative RMI server
         try {
             Node obj = new Node();// Create new instance of content for RMI to use
-            InifServer stub = (InifServer) UnicastRemoteObject.exportObject(obj, 0); //create stub
+            InifNodeServer stub = (InifNodeServer) UnicastRemoteObject.exportObject(obj, 0); //create stub
             Registry registry = LocateRegistry.getRegistry(nodePort);//Denote nodePort to get registry from
             registry.bind("AdminServer", stub); //Bind stub to registry
-            System.out.println("Admin Server (InifServer) Ready");
+            System.out.println("Admin Server (InifNodeServer) Ready");
         } catch (Exception e) {
             System.err.println("Server exception: " + e.toString());
             e.printStackTrace();
@@ -81,7 +86,7 @@ public class Node implements InifNode, InifServer, Serializable {
         }
     }
 
-    private void registerWithQuery(String queryIP, int port) {
+    private void registerWithQuery(String queryIP, int port) { //Register with remote Query
         try {
             Registry registry = LocateRegistry.getRegistry(queryIP, port); //IP Address of RMI Server, nodePort of RMIRegistry
             InifQueryServer stub = (InifQueryServer) registry.lookup("QueryServer"); //Name of RMI Server in registry
@@ -97,7 +102,7 @@ public class Node implements InifNode, InifServer, Serializable {
         }
     }
 
-    public void startService() throws RemoteException {
+    public void startService() throws RemoteException { //Start local Shard service
         verifyNodePort();
         System.out.println("Current Port: " + nodePort);
         System.out.println("Service Started!");
@@ -105,15 +110,15 @@ public class Node implements InifNode, InifServer, Serializable {
         System.out.println(" Port: " + arrayData.getShardMap().get("Core").getNodePort());
         System.out.println("Role of this server: " + shard.getRole());
         System.out.println();
-//        shard.startShard(arrayData, this);
-        if (!shard.getRole().equals("Core")) {
+        shard.startShard(arrayData, this);
+        if (!shard.getRole().equals("Core")) { //Check-in with Core
             startCoreCheck();
         }
 
 
     }
 
-    public void unassignNode(String reason) throws RemoteException {
+    public void unassignNode(String reason) throws RemoteException { //Remove Node from Array
         timer.cancel();
         verifyNodePort();
 
@@ -127,7 +132,7 @@ public class Node implements InifNode, InifServer, Serializable {
     }
 
     @Override
-    public void terminateNode(String reason) throws RemoteException {
+    public void terminateNode(String reason) throws RemoteException { //End Node Thread
         //Run Shard Cleanup methods
         System.err.println("Node to Terminate: " + reason);
         System.exit(1);
@@ -157,21 +162,6 @@ public class Node implements InifNode, InifServer, Serializable {
         this.arrayData = data;
     }
 
-//    public boolean ping() {
-//        setCoreCheck(true);
-//        System.out.println("Check in From Core");
-//        return true;
-//    }
-
-//    private boolean getCoreCheck(){
-//        System.out.println("Core Get: "+coreCheck);
-//        return this.coreCheck;
-//    }
-//
-//    private  void setCoreCheck(boolean check){
-//        System.out.println("Core Set: "+check);
-//        this.coreCheck = check;
-//    }
 
     private void startCoreCheck() {
         System.out.println("Core Integrity Check Started!");
@@ -184,22 +174,11 @@ public class Node implements InifNode, InifServer, Serializable {
         }
     }
 
-    private TimerTask timerTask() {
+    private TimerTask timerTask() { //Timer for core check
         return new TimerTask() {
 
             @Override
             public void run() {
-//                if (getCoreCheck()) {
-//                    setCoreCheck(false);
-//                    System.out.println("Core Integrity Verified!");
-//                } else {
-//                    System.out.println("Core Integrity Compromised!");
-//                    try {
-//                        unassignNode("Core timed out!");
-//                    } catch (RemoteException e) {
-//                        e.printStackTrace();
-//                    }
-//                }
                 try {
                     Registry registry = LocateRegistry.getRegistry(arrayData.getShardMap().get("Core").getNodeIP(), arrayData.getShardMap().get("Core").getNodePort()); //IP Address of RMI Server, port of RMIRegistry
                     registry.lookup("AdminServer");
@@ -234,7 +213,7 @@ public class Node implements InifNode, InifServer, Serializable {
 
     }
 
-    private void reportQryErr() {
+    private void reportQryErr() { // Report failure of Core Node to Query Server
         try {
             Node core = arrayData.getShardMap().get("Core");
             Registry queryRegistry = LocateRegistry.getRegistry(arrayData.getQueryIP(), arrayData.getQueryPort()); //IP Address of RMI Server, port of RMIRegistry
@@ -246,5 +225,9 @@ public class Node implements InifNode, InifServer, Serializable {
         } catch (Exception e) {
             System.err.println("Unable to inform QueryServer of Core Timeout!");
         }
+    }
+
+    public boolean ping() throws RemoteException {
+        return true;
     }
 }

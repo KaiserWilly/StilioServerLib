@@ -8,8 +8,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by JD Isenhart on 11/17/2016.
- * Testing RMI creation in Java 8
+ * Created 11/17/2016
+ * Software Development - Team 2063-1
+ * Colorado TSA Conference - Feb 2017
+ *
+ * Purpose: QueryServer is the implementation
+ * of the server responsible for handling
+ * incoming Server connections. It controls if
+ * Arrays can accept clients, and directs clients
+ * to valid Arrays. it also manages inter-Array
+ * communication, and checks the health of each
+ * Array.
  */
 public class QueryServer implements InifQueryServer {
     private ArrayList<Node> nodeList = new ArrayList<>();
@@ -17,12 +26,12 @@ public class QueryServer implements InifQueryServer {
     private final ArrayList<Shard> SHARDS;
     private final int QUERYPORT;
 
-    public QueryServer(int port, ArrayList<Shard> shards) {
+    QueryServer(int port, ArrayList<Shard> shards) {
         this.QUERYPORT = port;
         this.SHARDS = shards;
     }
 
-    public void registerNode(String ip, int port) throws RemoteException {
+    public void registerNode(String ip, int port) throws RemoteException { //Register new Node
         Node nNode = new Node(ip, port, null);
         boolean update = false;
 
@@ -47,7 +56,7 @@ public class QueryServer implements InifQueryServer {
     }
 
     @Override
-    public void removeArray(Array a) throws RemoteException {
+    public void removeArray(Array a) throws RemoteException { //Remove Array from references
         arrayList.remove(a);
         try {
             Registry registry = LocateRegistry.getRegistry(Inet4Address.getLocalHost().getHostAddress(), QUERYPORT); //IP Address of RMI Server, port of RMIRegistry
@@ -60,36 +69,35 @@ public class QueryServer implements InifQueryServer {
         System.err.println("Array Dissolved!");
     }
 
-    public void queryErrState(String statement) throws RemoteException {
+    public void queryErrState(String statement) throws RemoteException { //Print out Query Error message
         System.err.println(statement);
     }
 
     private class ArrayCreate extends Thread {
+        //Concurrent thread that creates a new Array and dispatches it from Query Server
         Array data = new Array();
-
         public void run() {
             List<Node> aList = new ArrayList<>();
             Node n = null;
             try {
                 data.setQueryIP(Inet4Address.getLocalHost().getHostAddress());
                 data.setQueryPort(1180);
-                for (int i = 0; i < SHARDS.size(); i++) { //Verify Node is active
+                for (int i = 0; i < SHARDS.size(); i++) { //One Node per Shard
                     n = nodeList.get(i);
                     aList.add(n);
                     n.setShard(SHARDS.get(i));
                     data.addShardMap(n);
                     Registry registry = LocateRegistry.getRegistry(n.getNodeIP(), n.getNodePort()); //IP Address of RMI Server, port of RMIRegistry
-                    registry.lookup("AdminServer"); //Name of RMI Server in registry
-                    data.addNode(n);
+                    registry.lookup("AdminServer"); //Verify Node is active
+                    data.addNode(n); //Add node to Array
                 }
             } catch (Exception e) {
-//                e.printStackTrace();
                 System.err.println("Unable to create new Array! (Ping)");
-                nodeList.remove(nodeList.indexOf(n));
+                nodeList.remove(nodeList.indexOf(n)); //Remove Bad node from NodeList
                 System.out.println("Returned good Nodes to List!");
                 return;
             }
-            nodeList.removeAll(aList);
+            nodeList.removeAll(aList); //Remove nodes in new array from Query
 
             for (Node o : data.getNodeList()) {  //Transcribe data to Nodes
                 startServices startNodes = new startServices(data, o);
@@ -106,7 +114,7 @@ public class QueryServer implements InifQueryServer {
             }
         }
 
-        class startServices extends Thread {
+        class startServices extends Thread { //Thread that starts each Node's services concurrently
             Array data;
             Node n;
 

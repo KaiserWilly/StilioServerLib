@@ -27,8 +27,8 @@ public class CoreShard extends Shard implements InifCore {
     public void startShard(Array data, Node n) {
         try {
             Registry registry = LocateRegistry.getRegistry(n.getNodePort());
-            registry.bind("Core", UnicastRemoteObject.exportObject(this, 0));
-            System.out.println("Client Server (InifCore) started!");
+            registry.bind("Core", UnicastRemoteObject.exportObject(new CoreShard(), n.getNodePort()));
+            System.out.println("Client Server (InifCore) started! Port: " + n.getNodePort());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -50,7 +50,7 @@ public class CoreShard extends Shard implements InifCore {
                 data.getNodeList().stream().filter(n -> !n.getShard().getRole().equals("Core") && !dissolved).forEach(n -> {
                     try {
                         Registry registry = LocateRegistry.getRegistry(n.getNodeIP(), n.getNodePort()); //IP Address of RMI Server, port of RMIRegistry
-                        InifServer stub = (InifServer) registry.lookup("AdminServer"); //Name of RMI Server in registry
+                        InifNodeServer stub = (InifNodeServer) registry.lookup("AdminServer"); //Name of RMI Server in registry
 //                        stub.ping();
                     } catch (Exception e) {
                         try {

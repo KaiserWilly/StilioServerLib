@@ -9,13 +9,20 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 
 /**
- * Created by JD Isenhart on 12/7/2016.
- * Testing RMI creation in Java 8
+ * Created 12/7/2016
+ * Software Development - Team 2063-1
+ * Colorado TSA Conference - Feb 2017
+ *
+ * Purpose: The Query is the routing entity
+ * of the framework. New Nodes are compiled into
+ * Arrays and released for client connections,
+ * and imcoming client connections are forwarded
+ * to valid Arrays.
  */
 public class Query {
     ArrayList<Shard> shardList;
 
-    public Query(ArrayList<Shard> shardList) {
+    public Query(ArrayList<Shard> shardList) { //Import ShardList from Server
         shardList.add(new CoreShard());
         this.shardList = shardList;
     }
@@ -24,7 +31,7 @@ public class Query {
         String ip = null;
         try {
             LocateRegistry.createRegistry(port);
-            ip = Inet4Address.getLocalHost().getHostAddress();
+            ip = Inet4Address.getLocalHost().getHostAddress(); //Get IP Address
         } catch (Exception e) {
             System.err.println("Unable to create Query Registry");
             System.exit(1);
@@ -37,7 +44,7 @@ public class Query {
         new QueryIOConsole(ip, port).run();
     }
 
-    public void startQueryServer(int port) {
+    private void startQueryServer(int port) {
         try {
             QueryServer obj = new QueryServer(port, shardList);// Create new instance of content for RMI to use
             Registry registry = LocateRegistry.getRegistry(port);//Denote port to get registry from

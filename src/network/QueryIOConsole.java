@@ -7,23 +7,31 @@ import java.util.Scanner;
 import java.util.regex.Pattern;
 
 /**
- * Created by james on 12/7/2016.
+ * Created 12/14/2016
+ * Software Development - Team 2063-1
+ * Colorado TSA Conference - Feb 2017
+ *
+ * Purpose: QueryIO Console manages Admin
+ * command line interaction. It can terminate
+ * Arrays and Nodes, plus run health checks
+ * on entities.
  */
 public class QueryIOConsole extends Thread {
     private String queryIP;
     private int queryPort;
     Scanner input = new Scanner(System.in);
     static private final String IPV4_REGEX = "(([0-1]?[0-9]{1,2}\\.)|(2[0-4][0-9]\\.)|(25[0-5]\\.)){3}(([0-1]?[0-9]{1,2})|(2[0-4][0-9])|(25[0-5]))";
+    //Pattern distinguishing valid IPv4 Addresses.
     static private Pattern IPV4_PATTERN = Pattern.compile(IPV4_REGEX);
 
-    public QueryIOConsole(String queryIP, int queryPort) {
+    QueryIOConsole(String queryIP, int queryPort) {
         this.queryIP = queryIP;
         this.queryPort = queryPort;
     }
 
     private boolean isValidIPV4(final String s) {
         return IPV4_PATTERN.matcher(s).matches();
-    }
+    } //Checks validity of input
 
     @Override
     public void run() {
@@ -38,7 +46,7 @@ public class QueryIOConsole extends Thread {
         }
 
         boolean quit = false;
-        while (!quit) {
+        while (!quit) { //Infinite loop, allows for multiple input commands.
             try {
                 String[] result = input.nextLine().split(" ");
                 boolean wrong = false;
@@ -55,8 +63,6 @@ public class QueryIOConsole extends Thread {
                         } else if (result.length == 3) {
                             if (isValidIPV4(result[1]) && Integer.parseInt(result[2]) != 0) {
                                 System.out.println("Alternative QueryServer IP:" + result[1] + " Port:" + result[2]);
-                                //Check QueryServer Validity
-                                //Cerate Node comamnds to hand off to other server
                             } else wrong = true;
                         } else {
                             System.out.println("Invalid Arguments! Usage: Stop <args> <AltQIP>");
